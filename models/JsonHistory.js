@@ -1,26 +1,64 @@
 // models/jsonHistory.js
 import pool from '../config/database.js';
 
+// Safe JSON stringify with error handling
+export const safeJsonStringify = (data) => {
+  if (data === null || data === undefined) return null;
+
+  try {
+    // Check if data is already a string
+    if (typeof data === 'string') {
+      // Try to parse it first to ensure it's valid JSON
+      JSON.parse(data);
+      return data;
+    }
+
+    // For objects, stringify them
+    const jsonString = JSON.stringify(data);
+
+    // Validate the result can be parsed back
+    JSON.parse(jsonString);
+
+    return jsonString;
+  } catch (error) {
+    // If JSON operations fail, create a safe representation
+    console.warn('Failed to stringify data for history:', error.message);
+    try {
+      // Fallback: create a simple object with error info
+      return JSON.stringify({
+        error: 'Data could not be serialized',
+        type: typeof data,
+        hasCircularRef: error.message.includes('circular'),
+        timestamp: new Date().toISOString()
+      });
+    } catch (fallbackError) {
+      // If even the fallback fails, return null
+      console.error('Failed to create fallback history data:', fallbackError.message);
+      return null;
+    }
+  }
+};
+
 // Create a history record
 export const createHistoryRecord = async ({ entryId, action, oldData = null, newData = null, changes = null }) => {
   const query = `
-    INSERT INTO json_history (entry_id, action, old_data, new_data, changes) 
+    INSERT INTO json_history (entry_id, action, old_data, new_data, changes)
     VALUES (?, ?, ?, ?, ?)
   `;
-  
+
   const [result] = await pool.execute(query, [
     entryId,
     action,
-    oldData ? JSON.stringify(oldData) : null,
-    newData ? JSON.stringify(newData) : null,
-    changes ? JSON.stringify(changes) : null
+    safeJsonStringify(oldData),
+    safeJsonStringify(newData),
+    safeJsonStringify(changes)
   ]);
-  
-  return { 
+
+  return {
     id: result.insertId,
-    entryId, 
-    action, 
-    createdAt: new Date() 
+    entryId,
+    action,
+    createdAt: new Date()
   };
 };
 

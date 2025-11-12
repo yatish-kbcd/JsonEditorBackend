@@ -1,6 +1,6 @@
 // models/jsonEntry.js
 import pool from '../config/database.js';
-import { createHistoryRecord } from './JsonHistory.js';
+import { createHistoryRecord, safeJsonStringify } from './JsonHistory.js';
 
 // Calculate differences between two JSON objects
 export const calculateChanges = (oldData, newData) => {
@@ -50,7 +50,7 @@ export const createJsonEntry = async ({ name, data }) => {
     VALUES (?, ?)
   `;
   
-  const [result] = await pool.execute(query, [name, JSON.stringify(data)]);
+  const [result] = await pool.execute(query, [name, safeJsonStringify(data)]);
   const id = result.insertId;
   
   // Log history
@@ -106,22 +106,38 @@ export const findJsonEntryById = async (id) => {
 export const updateJsonEntry = async (id, { name, data }) => {
   // Get old data for history
   const oldEntry = await findJsonEntryById(id);
-  
+
+  // Build dynamic update query based on provided fields
+  const updates = [];
+  const params = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    params.push(name);
+  }
+
+  updates.push('data = ?');
+  params.push(safeJsonStringify(data));
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
   const query = `
-    UPDATE json_entries 
-    SET name = ?, data = ?, updated_at = CURRENT_TIMESTAMP 
+    UPDATE json_entries
+    SET ${updates.join(', ')}
     WHERE id = ?
   `;
-  
-  const [result] = await pool.execute(query, [name, JSON.stringify(data), id]);
-  
+
+  params.push(id);
+
+  const [result] = await pool.execute(query, params);
+
   if (result.affectedRows === 0) {
     throw new Error('Entry not found');
   }
-  
+
   // Calculate changes for history
   const changes = calculateChanges(oldEntry.data, data);
-  
+
   // Log history
   await createHistoryRecord({
     entryId: id,
@@ -130,7 +146,7 @@ export const updateJsonEntry = async (id, { name, data }) => {
     newData: data,
     changes
   });
-  
+
   // Fetch the updated entry to return
   const updatedEntry = await findJsonEntryById(id);
   return updatedEntry;

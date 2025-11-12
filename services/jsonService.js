@@ -49,11 +49,11 @@ export const getJsonEntryById = async (id) => {
 };
 
 // Update JSON entry
-export const updateJsonEntryById = async (id, data, name = null) => {
+export const updateJsonEntryById = async (id, data, name) => {
   try {
-    const entry = await updateJsonEntry(id, { 
-      name: name || undefined, 
-      data 
+    const entry = await updateJsonEntry(id, {
+      name,  // Pass name as-is (undefined means don't update)
+      data
     });
     return entry;
   } catch (error) {
