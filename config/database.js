@@ -1,6 +1,6 @@
 // config/database.js
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
 import mysql from 'mysql2/promise';
 
 // Database configuration
