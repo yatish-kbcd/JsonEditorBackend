@@ -46,10 +46,10 @@ export const calculateChanges = (oldData, newData) => {
 // Create a new JSON entry
 export const createJsonEntry = async ({ name, data }) => {
   const query = `
-    INSERT INTO json_entries (name, data) 
-    VALUES (?, ?)
+    INSERT INTO json_entries (name, data)
+    VALUES (?, CAST(? AS JSON))
   `;
-  
+
   const [result] = await pool.execute(query, [name, safeJsonStringify(data)]);
   const id = result.insertId;
   
@@ -116,7 +116,7 @@ export const updateJsonEntry = async (id, { name, data }) => {
     params.push(name);
   }
 
-  updates.push('data = ?');
+  updates.push('data = CAST(? AS JSON)');
   params.push(safeJsonStringify(data));
 
   updates.push('updated_at = CURRENT_TIMESTAMP');

@@ -43,7 +43,7 @@ export const safeJsonStringify = (data) => {
 export const createHistoryRecord = async ({ entryId, action, oldData = null, newData = null, changes = null }) => {
   const query = `
     INSERT INTO json_history (entry_id, action, old_data, new_data, changes)
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, CAST(? AS JSON), CAST(? AS JSON), CAST(? AS JSON))
   `;
 
   const [result] = await pool.execute(query, [
